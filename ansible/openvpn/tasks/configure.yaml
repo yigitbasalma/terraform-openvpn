@@ -1,0 +1,39 @@
+---
+  - name: Change openvpn user password
+    ansible.builtin.user:
+      name: openvpn
+      state: present
+      password: "{{ OVPN_ADMIN_PASSWORD | password_hash('sha512') }}"
+
+  - name: Configure OpenVPN
+    shell: |
+      /usr/local/openvpn_as/scripts/sacli --key "vpn.server.routing.private_access" --value "route" ConfigPut
+      /usr/local/openvpn_as/scripts/sacli start
+
+  - name: Create groups on OpenVPN
+    shell: |
+      /usr/local/openvpn_as/scripts/sacli --pfilt {{ item.name }} UserPropGet 2> /dev/null ||
+        /usr/local/openvpn_as/scripts/sacli --user {{ item.name }} --key "type" --value "group" UserPropPut && 
+        /usr/local/openvpn_as/scripts/sacli --user {{ item.name }} --key "prop_reroute_gw_override" --value "dns_only" UserPropPut && 
+        /usr/local/openvpn_as/scripts/sacli --user {{ item.name }} --key "group_declare" --value "true" UserPropPut
+      
+      /usr/local/openvpn_as/scripts/sacli start
+    with_items: "{{ GROUPS }}"
+
+  - name: Define group subnets
+    shell: |
+      /usr/local/openvpn_as/scripts/sacli --user {{ item.name }} --key "group_subnets.0" --value {{ item.subnet }}/{{ item.prefix }} UserPropPut
+      /usr/local/openvpn_as/scripts/sacli start
+    with_items: "{{ GROUPS }}"
+      
+  - name: Create users on OpenVPN
+    shell: |
+      /usr/local/openvpn_as/scripts/sacli --pfilt {{ item.username }} UserPropGet 2> /dev/null ||
+        /usr/local/openvpn_as/scripts/sacli --user {{ item.username }} --key "type" --value "user_connect" UserPropPut && 
+        /usr/local/openvpn_as/scripts/sacli --user {{ item.username }} --key "conn_group" --value {{ item.group }} UserPropPut && 
+        /usr/local/openvpn_as/scripts/sacli --user {{ item.username }} --key "conn_ip" --value {{ item.ip }} UserPropPut && 
+        /usr/local/openvpn_as/scripts/sacli --user {{ item.username }} --new_pass "{{ item.password }}" SetLocalPassword
+
+      /usr/local/openvpn_as/scripts/sacli start
+    with_items: "{{ USERS }}"
+    no_log: true

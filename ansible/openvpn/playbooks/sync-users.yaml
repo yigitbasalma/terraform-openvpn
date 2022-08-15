@@ -1,0 +1,24 @@
+- name: Sync OpenVPN Users
+  hosts: target
+  become: true
+  tasks:
+    - name: Wait for port 22
+      wait_for:
+        port: 22
+        delay: 10
+        host: '{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}'
+        search_regex: OpenSSH
+      connection: local
+
+    - name: Import common variables
+      include_vars:
+        file: "{{ item }}"
+      with_items:
+        - "../vars/main.yaml"
+    
+    - name: Include tasks
+      include_tasks: "{{ item }}"
+      loop:
+        - "../tasks/aws.yaml"
+        - "../tasks/configure.yaml"
+        - "../tasks/send-email.yaml"

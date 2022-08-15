@@ -1,0 +1,11 @@
+---
+  - name: Add rules to route tables
+    shell: |
+      aws ec2 create-route \
+        --route-table-id {{ item.rt_id }} \
+        --destination-cidr-block {{ item.subnet }} \
+        --network-interface-id {{ INTERFACE_ID }} \
+        --region {{ REGION }}
+    run_once: true
+    delegate_to: localhost
+    with_items: "{{ RT_ENTRIES }}"

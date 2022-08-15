@@ -1,0 +1,20 @@
+---
+  - name: Send login information to users (via SMTP)
+    mail:
+      host: "{{ EMAIL_HOST }}"
+      port: "{{ EMAIL_PORT }}"
+      username: "{{ EMAIL_USERNAME }}"
+      password: "{{ EMAIL_PASSWORD }}"
+      subject: "{{ ENVIRONMENT | title }} environment OpenVPN Login Information"
+      from: "{{ EMAIL_FROM }}"
+      to: "{{ item.email }}"
+      body: |
+        You can use information down below for download ovpn file and connect to the infrastructure.
+
+        Address: https://{{ OVPN_URL }}:943
+        Username: {{ item.username }}
+        Password: {{ item.password }}
+    with_items: "{{ USERS }}"
+    delegate_to: localhost
+    run_once: true
+    no_log: true
